@@ -1,9 +1,8 @@
 #pragma once
 
+#include "../Client/Client.hpp"
 #include <set>
 #include <string>
-
-#include "../Client/Client.hpp"
 
 class Channel {
 private:
@@ -22,7 +21,7 @@ private:
   bool _hasKey(void) const;
 
 public:
-  Channel(std::string &channel_name);
+  Channel(const std::string &channel_name);
   virtual ~Channel(void);
 
   // tente d'ajouter un membre au channel

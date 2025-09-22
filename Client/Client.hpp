@@ -1,11 +1,12 @@
 #pragma once
 
+#include "../Server/Server.hpp"
 #include <queue>
 #include <set>
 #include <string>
 #include <vector>
 
-class Server;
+class Channel;
 
 class Client {
 private:
@@ -16,13 +17,12 @@ private:
   std::string _hostname;
   std::string _msg_buffer;
   bool _authenticated;
-  std::set<std::string> _op_in_these_channels;
-  std::set<std::string> _joind_channels;
+  std::set<Channel *> _joind_channels;
   std::queue<std::string> _send_queue;
 
 public:
   // stocker fd, hostname = getpeername();
-  Client(const int &client_fd);
+  Client(const int &client_fd, Server &server);
 
   // Close les fd correspondant au client.
   virtual ~Client(void);
