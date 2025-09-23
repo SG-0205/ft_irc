@@ -32,10 +32,10 @@ public:
   bool isOperatorForThisChannel(const std::string &channel_name);
 
   // Recupere les nouvelles donnees depuis server&
-  void receiveData(Server &server);
+  void receiveData(Server *server);
 
   // Gere toutes les commandes (enum de type de commande?)
-  void handleCommand(Server &server, const std::string &raw_cmd);
+  void handleCommand(Server *server, const std::string &raw_cmd);
 
   // Enregistre un message dans la queue pour un futur envoi
   void queueMessage(const std::string &message);
@@ -44,22 +44,22 @@ public:
   void processMessages(void);
 
   // Gestion PASS
-  void tryAuthenticate(Server &server,
+  void tryAuthenticate(Server *server,
                        const std::vector<std::string> &pass_params);
   // Gestion NICK
-  void trySetNickname(Server &server,
+  void trySetNickname(Server *server,
                       const std::vector<std::string> &nick_params);
   // Gestion USER
-  void trySetUsername(Server &server,
+  void trySetUsername(Server *server,
                       const std::vector<std::string> &user_params);
   // Gestion JOIN
-  void tryJoinChannel(Server &server,
+  void tryJoinChannel(Server *server,
                       const std::vector<std::string> &join_params);
 
   // Gestion PRIVMSG
-  void tryPrivateMessage(Server &server,
+  void tryPrivateMessage(Server *server,
                          const std::vector<std::string> &privmsg_params);
 
   // Gestion QUIT
-  void tryQuit(Server &server, const std::vector<std::string> &quit_params);
+  void tryQuit(Server *server, const std::vector<std::string> &quit_params);
 };

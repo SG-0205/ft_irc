@@ -1,4 +1,6 @@
 #include "Server.hpp"
+#include "../Channel/Channel.hpp"
+#include "../Client/Client.hpp"
 #include "../rpl_codes.h"
 #include <asm-generic/socket.h>
 #include <bits/getopt_core.h>
@@ -152,6 +154,17 @@ static sockaddr_in &initSocketAddrIn(sockaddr_in &socket_address,
   return (socket_address);
 }
 
+pollfd Server::_newPollFd(const int &fd, const int &events,
+                          const int &r_events) {
+  pollfd new_pollfd;
+
+  new_pollfd.fd = fd;
+  new_pollfd.events = events;
+  new_pollfd.revents = r_events;
+
+  return (new_pollfd);
+}
+
 void Server::init(void) {
   _server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (_server_fd < 0)
@@ -180,5 +193,63 @@ void Server::init(void) {
     close(_server_fd);
   }
 
-  // CONTINUE HERE
+  if (listen(_server_fd, SOMAXCONN) < 0) {
+    throw std::runtime_error(
+        std::string("Server::init: couldn't start listening on socket: ") +
+        strerror(errno));
+    close(_server_fd);
+  }
+
+  _fds.push_back(_newPollFd(_server_fd, POLLIN, 0));
+}
+
+void Server::run(void) {
+  if (_fds.size() < 1)
+    throw std::runtime_error("Server::run: tried to run before init.");
+
+  while (!_stop_flag) {
+    int events_count = poll(_fds.data(), _fds.size(), -1);
+    if (events_count < 0)
+      throw std::runtime_error(std::string("Server::run: poll failure: ") +
+                               strerror(errno));
+
+    for (int i = 0; i < events_count; i++) {
+      pollfd &has_event = _fds[i];
+
+      if (has_event.fd == _server_fd) {
+        if (has_event.revents & POLLIN)
+          _handleNewConnection();
+      } else {
+        if (has_event.revents & POLLIN) {
+
+          Client *client = _clients[has_event.fd];
+          if (!client)
+            // Ameliorer en prenant le fd pour log, ne pas utiliser
+            // runtime_error car bloquant dans la logique principale;
+            throw std::runtime_error(
+                "Server::run: no client for a file descriptor");
+          client->receiveData(this);
+
+        } else if (has_event.revents & POLLOUT) {
+
+          Client *client = _clients[has_event.fd];
+          if (!client)
+            // Ameliorer en prenant le fd pour log, ne pas utiliser
+            // runtime_error car bloquant dans la logique principale;
+            throw std::runtime_error(
+                "Server::run: no client for a file descriptor");
+
+          client->processMessages();
+        } else if (has_event.revents & POLLERR || has_event.revents & POLLHUP) {
+          removeClient(has_event.fd);
+          if (has_event.revents & POLLHUP)
+            // Idem, ne pas bloquer en cas de deconnexion imprevue;
+            throw std::runtime_error(
+                "Server::run: client disconnected unexpectedly.");
+
+          // CONTINUE HERE
+        }
+      }
+    }
+  }
 }

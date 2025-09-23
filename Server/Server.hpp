@@ -3,6 +3,7 @@
 #include <map>
 #include <poll.h>
 #include <string>
+#include <sys/poll.h>
 #include <vector>
 
 class Client;
@@ -27,6 +28,9 @@ private:
 
   // Nouvelle connexion
   void _handleNewConnection(void);
+  // Creation de pollfd
+  static pollfd _newPollFd(const int &fd, const int &events,
+                           const int &r_events);
 
   static void _signalHandler(int signal);
 
