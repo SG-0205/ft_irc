@@ -62,4 +62,7 @@ public:
 
   // Gestion QUIT
   void tryQuit(Server *server, const std::vector<std::string> &quit_params);
+
+  // Getters pour gestion externe
+  std::set<Channel *> &getChannels(void);
 };

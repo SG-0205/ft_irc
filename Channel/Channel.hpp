@@ -46,4 +46,9 @@ public:
   void tryMode(Client *sender, const std::string &mode_message);
 
   bool isOperator(Client *client);
+
+  // Getters pour gestion externe
+  std::set<Client *> &getRegisteredClients(void);
+  std::set<Client *> &getOperators(void);
+  std::set<Client *> &getInvitedClients(void);
 };

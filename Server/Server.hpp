@@ -21,6 +21,7 @@ private:
   std::map<int, Client * > _clients;
   std::map<std::string, Channel *> _channels;
   volatile bool _stop_flag;
+  volatile bool _clients_mod_flag;
   static std::string _hostname;
 
   Server(const Server &other);
@@ -28,6 +29,12 @@ private:
 
   // Nouvelle connexion
   void _handleNewConnection(void);
+  // Logging
+  void _warningMessage(const std::string &msg);
+  // Fetching du Client*
+  Client *_fetchClientByFD(const int &fd, const std::string &prefix = "");
+  // Fetching du Channel *
+  Channel *_fetchChannelByName(const std::string &channel_name);
   // Creation de pollfd
   static pollfd _newPollFd(const int &fd, const int &events,
                            const int &r_events);
@@ -42,8 +49,8 @@ public:
   void init(void);
   // Launch
   void run(void);
-  // Remove client;
-  void removeClient(int &client_fd);
+  // Remove client + mets a jour _client_mod_flag;
+  void removeClient(const int &client_fd);
   // Channel relay
   void sendToChannel(const std::string &channel_name,
                      const std::string &message, Client *exclude = NULL);
