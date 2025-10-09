@@ -6,21 +6,25 @@
 #include "../utils/utils.hpp"
 #include <asm-generic/socket.h>
 #include <bits/getopt_core.h>
+#include <cctype>
 #include <cerrno>
-#include <cmath>
 #include <csignal>
+#include <cstddef>
 #include <cstring>
 #include <ctime>
 #include <fcntl.h>
 #include <iostream>
 #include <limits.h>
 #include <netinet/in.h>
+#include <ostream>
 #include <signal.h>
 #include <stdexcept>
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+const std::string Server::SERVER_PASSWORD = "TEST";
 
 static const std::string generateHostname(void) {
   char host_buffer[HOST_NAME_MAX];
@@ -342,7 +346,7 @@ void Server::removeClient(const int &client_fd) {
 }
 
 Channel *Server::_fetchChannelByName(const std::string &channel_name) {
-  Channel *channel = _channels[channel_name];
+  Channel *channel = _channels[normalizeString(channel_name)];
   if (!channel)
     _warningMessage(channel_name + ": no such channel.");
 
@@ -353,7 +357,7 @@ void Server::sendToChannel(const std::string &channel_name,
                            const std::string &message, Client *exclude) {
   // On assume que le message respecte deja la RFC
 
-  Channel *channel = _fetchChannelByName(normalizeString(channel_name));
+  Channel *channel = _fetchChannelByName(channel_name);
   if (channel) {
 
     std::set<Client *> &channel_clients = channel->getRegisteredClients();
@@ -366,5 +370,104 @@ void Server::sendToChannel(const std::string &channel_name,
       // queueMessage doit split le message en chunks de 512 octets si besoin
       (*cli_it)->queueMessage(message);
     }
+  }
+}
+
+void Server::removeChannel(const std::string &channel_name) {
+  Channel *channel = _fetchChannelByName(channel_name);
+  if (!channel || !channel->getRegisteredClients().empty())
+    return;
+
+  delete channel;
+  _channels.erase(channel_name);
+  std::cout << "Deleted channel " << channel_name << std::endl;
+}
+
+static bool validateChannelName(const std::string &channel_name) {
+  // cas "" / "#" / "#oooo...[50]"
+  if (channel_name.empty() || channel_name.length() > 50 ||
+      channel_name.length() == 1)
+    return (false);
+  // cas 'channelName'
+  if (channel_name[0] != '#')
+    return (false);
+  // mauvaise separation des args
+  if (channel_name.find(',') != std::string::npos)
+    return (false);
+
+  // caracteres non imprimables (i = 1 pour skip le prefixe)
+  static const std::string extra_chars = "-_";
+  for (int i = 1; i < channel_name.length(); i++)
+    if (!std::isalnum(channel_name[i]) &&
+        extra_chars.find(channel_name[i]) == std::string::npos)
+      return (false);
+
+  return (true);
+}
+
+Channel *Server::createChannel(const std::string &channel_name) {
+  // Renvoyer NULL en cas d'erreur de format;
+  if (!validateChannelName(channel_name))
+    return (NULL);
+
+  // Gestion du join sur un channel existant;
+  Channel *fetch_attempt = _fetchChannelByName(channel_name);
+  if (fetch_attempt)
+    return (fetch_attempt);
+
+  // Pas de normalize pour l'objet;
+  Channel *new_channel = new Channel(channel_name);
+  _channels.insert({normalizeString(channel_name), new_channel});
+
+  return (new_channel);
+}
+
+Client *Server::findClientByNick(const std::string &nick) {
+  for (std::map<int, Client *>::const_iterator client_it = _clients.begin();
+       client_it != _clients.end(); client_it++)
+    if (normalizeString(client_it->second->GetNickName()) ==
+        normalizeString(nick))
+      return (client_it->second);
+
+  return (NULL);
+}
+
+void Server::_handleNewConnection(void) {
+  sockaddr_in client_address;
+  socklen_t ca_size = sizeof(client_address);
+  int new_fd = -1;
+
+  // nouvel fd & verif de l'operation
+  if ((new_fd = accept(_server_fd, (sockaddr *)(&client_address), &ca_size)) <
+      0) {
+    _warningMessage("Error during accept(): " + std::string(strerror(errno)));
+
+    if (errno != EAGAIN && errno != EWOULDBLOCK)
+      return;
+  };
+
+  // Passe en mode non bloquant
+  if (fcntl(new_fd, F_SETFL, O_NONBLOCK) < 0) {
+    _warningMessage("Couldn't setup new client fd.");
+    close(new_fd);
+    return;
+  }
+
+  if (_clients.size() < 128) {
+    Client *new_client = new Client(new_fd, *this);
+    if (!new_client) {
+      _warningMessage("Couldn't create new client object. (" +
+                      std::string(strerror(errno)) + ")");
+      close(new_fd);
+      return;
+    }
+
+    _clients.insert({new_fd, new_client});
+    _fds.push_back(_newPollFd(new_fd, POLLIN | POLLOUT, 0));
+    std::cout << GREEN ITALIC << "New client with fd " << new_fd << '\n'
+              << RESET;
+  } else {
+    // TODO : NOTIFIER CLIENT;
+    close(new_fd);
   }
 }

@@ -65,4 +65,10 @@ public:
 
   // Getters pour gestion externe
   std::set<Channel *> &getChannels(void);
+
+  // Getters names;
+  const std::string &GetNickName(void) const;
+  const std::string &GetUserName(void) const;
+  const std::string &GetRealName(void) const;
+  const std::string &GetHostname(void) const;
 };
