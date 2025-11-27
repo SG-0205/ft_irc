@@ -20,6 +20,8 @@ private:
   std::vector<pollfd> _fds;
   std::map<int, Client * > _clients;
   std::map<std::string, Channel *> _channels;
+  // volatile force le check de la valeur a chaque iteration d'une
+  // boucle/condition
   volatile bool _stop_flag;
   volatile bool _clients_mod_flag;
   static std::string _hostname;
@@ -31,6 +33,7 @@ private:
   void _handleNewConnection(void);
   // Logging
   void _warningMessage(const std::string &msg);
+  void _infoMessage(const std::string &msg);
   // Fetching du Client*
   Client *_fetchClientByFD(const int &fd, const std::string &prefix = "");
   // Fetching du Channel *

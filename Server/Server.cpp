@@ -1,7 +1,6 @@
 #include "Server.hpp"
 #include "../Channel/Channel.hpp"
 #include "../Client/Client.hpp"
-#include "../rpl_codes.h"
 #include "../utils/colors.h"
 #include "../utils/utils.hpp"
 #include <asm-generic/socket.h>
@@ -18,6 +17,7 @@
 #include <netinet/in.h>
 #include <ostream>
 #include <signal.h>
+#include <sstream>
 #include <stdexcept>
 #include <sys/poll.h>
 #include <sys/select.h>
@@ -25,94 +25,6 @@
 #include <unistd.h>
 
 const std::string Server::SERVER_PASSWORD = "TEST";
-
-static const std::string generateHostname(void) {
-  char host_buffer[HOST_NAME_MAX];
-  if (gethostname(host_buffer, HOST_NAME_MAX) < 0)
-    throw std::runtime_error("generateHostname::gethostname failed.");
-
-  return (std::string("ft_irc.") + host_buffer);
-}
-
-std::string Server::_hostname = generateHostname();
-
-Server *Server::SERVER_INSTANCE = NULL;
-
-const std::string &Server::getServerHostname(void) {
-  if (_hostname.empty())
-    throw std::runtime_error("Server::getServerHostname: undefined hostname.");
-
-  return (_hostname);
-}
-
-const std::string Server::buildServerReply(const std::string &command,
-                                           const std::string &nick,
-                                           const std::string &params,
-                                           const std::string &trailing) {
-  if (command.empty())
-    throw std::invalid_argument("Server::buildServerReply: empty command.");
-  else if (nick.empty())
-    throw std::invalid_argument("Server::buildServerReply: empty nick.");
-
-  std::string prefix = ":" + getServerHostname() + " ";
-  std::string message = prefix + command + " " + nick;
-
-  if (!params.empty())
-    message += " " + params;
-  if (!trailing.empty())
-    message += " " + trailing;
-
-  message += MSG_SEPARATOR;
-
-  return (message);
-}
-
-const std::string
-Server::buildUserReply(const std::string &nick, const std::string &user,
-                       const std::string &host, const std::string &command,
-                       const std::string &target, const std::string &trailing) {
-  if (nick.empty())
-    throw std::invalid_argument("Server::buildUserReply: empty nick.");
-  else if (user.empty())
-    throw std::invalid_argument("Server::buildUserReply: empty user.");
-  else if (host.empty())
-    throw std::invalid_argument("Server::buildUserReply: empty host.");
-  else if (command.empty())
-    throw std::invalid_argument("Server::buildUserReply: empty command.");
-  else if (target.empty())
-    throw std::invalid_argument("Server::buildUserReply: empty target.");
-
-  std::string prefix = ":" + nick + "! " + user + "@" + host + " ";
-  std::string message = prefix + command + " " + target;
-
-  if (!trailing.empty())
-    message += " :" + trailing;
-
-  message += MSG_SEPARATOR;
-
-  return (message);
-}
-
-const std::string Server::buildErrorReply(const std::string &command,
-                                          const std::string &nick,
-                                          const std::string &target,
-                                          const std::string &reason) {
-  if (command.empty())
-    throw std::invalid_argument("Server::buildErrorReply: empty command.");
-  else if (nick.empty())
-    throw std::invalid_argument("Server::buildErrorReply: empty nick.");
-  else if (target.empty())
-    throw std::invalid_argument("Server::buildErrorReply: empty target.");
-  else if (reason.empty())
-    throw std::invalid_argument("Server::buildErrorReply: empty reason.");
-
-  std::string prefix = ":" + getServerHostname() + " ";
-  std::string message =
-      prefix + command + " " + nick + " " + target + " :" + reason;
-  message += MSG_SEPARATOR;
-
-  return (message);
-}
 
 void Server::_signalHandler(int signal_nb) {
   if (signal_nb == SIGINT || signal_nb == SIGKILL || signal_nb == SIGTERM) {
@@ -221,6 +133,10 @@ void Server::init(void) {
 
 void Server::_warningMessage(const std::string &msg) {
   std::cerr << YELLOW << msg << RESET << '\n';
+}
+
+void Server::_infoMessage(const std::string &msg) {
+  std::cout << GREEN ITALIC << msg << RESET << '\n';
 }
 
 Client *Server::_fetchClientByFD(const int &fd, const std::string &prefix) {
@@ -464,8 +380,10 @@ void Server::_handleNewConnection(void) {
 
     _clients.insert({new_fd, new_client});
     _fds.push_back(_newPollFd(new_fd, POLLIN | POLLOUT, 0));
-    std::cout << GREEN ITALIC << "New client with fd " << new_fd << '\n'
-              << RESET;
+    std::stringstream buf;
+    buf << GREEN ITALIC << "New client with fd " << new_fd << '\n';
+    _infoMessage(buf.str());
+
   } else {
     // TODO : NOTIFIER CLIENT;
     close(new_fd);

@@ -1,0 +1,10 @@
+NICK toto
+USER toto 0 * :Toto le testeur
+JOIN #test
+PRIVMSG #test :Salut le monde !
+MODE #test +i
+MODE #test +k coucou
+JOIN #test mauvaispass
+JOIN #test coucou
+PRIVMSG #test :Message avec des espaces et un deux-points au début :: comme ça
+QUIT :bye bye
