@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstddef>
 #include <map>
 #include <string>
 #include <vector>
+
 enum ReplyCodes {
   RPL_WELCOME,
   RPL_YOURHOST,
@@ -52,7 +54,7 @@ enum ReplyCodes {
   ERR_UNKNOWNCOMMAND,
   ERR_NOMOTD,
   ERR_NONICKNAMEGIVEN,
-  ERR_ERRONEUSENICKNAME,
+  ERR_ERRONEUSNICKNAME,
   ERR_NICKNAMEINUSER,
   ERR_NICKCOLLISION,
   ERR_USERNOTINCHANNEL,
@@ -81,10 +83,12 @@ enum ReplyCodes {
 struct serverReply {
 private:
   static const char ARG_PLACEHOLDER;
+  static const std::map<int, serverReply> _templates;
   ReplyCodes _code;
   std::string _rpl_code_string;
   std::string _format_string;
   bool _fillable;
+  size_t _max_params;
 
 public:
   serverReply(void);
@@ -97,16 +101,11 @@ public:
   const ReplyCodes &GetCodeEnum(void) const;
   const std::string &GetCodeString(void) const;
   const std::string &GetRawFormatString(void) const;
+  const size_t &GetMaxParamsCount(void) const;
   std::string
   makeServerReply(const std::vector<std::string> &reply_params) const;
 
-  void print(void) const;
-};
-
-class ReplyManager {
-private:
-  static const std::map<ReplyCodes, serverReply> _reply_templates;
-
-public:
   static const serverReply &GetReplyTemplate(const ReplyCodes &code);
+
+  void print(void) const;
 };
