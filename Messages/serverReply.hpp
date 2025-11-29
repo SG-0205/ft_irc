@@ -82,7 +82,6 @@ enum ReplyCodes {
 
 struct serverReply {
 private:
-  static const char ARG_PLACEHOLDER;
   static const std::map<int, serverReply> _templates;
   ReplyCodes _code;
   std::string _rpl_code_string;
@@ -91,6 +90,7 @@ private:
   size_t _max_params;
 
 public:
+  static const char ARG_PLACEHOLDER;
   serverReply(void);
   serverReply(const ReplyCodes &code, const std::string &code_nb_string,
               const std::string &format_string, const bool &fillable);
